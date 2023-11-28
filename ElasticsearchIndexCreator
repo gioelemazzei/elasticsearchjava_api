@@ -1,0 +1,48 @@
+package restcontroller;
+
+import org.apache.http.HttpHost;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
+import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.xcontent.XContentType;
+
+import java.io.IOException;
+
+public class ElasticsearchIndexCreator {
+
+    private static final String ELASTICSEARCH_HOST = "localhost";
+    private static final int ELASTICSEARCH_PORT = 9200;
+
+    public static void main(String[] args) {
+        RestHighLevelClient client = new RestHighLevelClient(
+                RestClient.builder(new HttpHost(ELASTICSEARCH_HOST, ELASTICSEARCH_PORT, "http"))
+        );
+
+        String indexName = "nome_indice";
+        String indexSettings = "{ \"settings\": { \"number_of_shards\": 1, \"number_of_replicas\": 0 } }";
+
+        CreateIndexRequest request = new CreateIndexRequest(indexName);
+        request.source(indexSettings, XContentType.JSON);
+
+        try {
+            CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
+
+            if (createIndexResponse.isAcknowledged()) {
+                System.out.println("Indice creato con successo!");
+            } else {
+                System.err.println("Errore durante la creazione dell'indice.");
+            }
+
+        } catch (IOException e) {
+            System.err.println("Errore durante la comunicazione con Elasticsearch: " + e.getMessage());
+        } finally {
+            try {
+                client.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
