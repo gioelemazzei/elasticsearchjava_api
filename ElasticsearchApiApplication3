@@ -1,0 +1,81 @@
+package org.springframework.web.bind.annotation;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.web.bind.annotation.*;
+
+import org.elasticsearch.action.get.GetRequest;
+import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.xcontent.XContentType;
+
+import java.io.IOException;
+import java.util.Map;
+
+@SpringBootApplication
+public class ElasticsearchApiApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ElasticsearchApiApplication.class, args);
+    }
+}
+
+@RestController
+@RequestMapping("/api/documents")
+class DocumentController {
+
+    private final RestHighLevelClient elasticsearchClient;
+    private final String indexName = "nome_indice"; // Assicurati di utilizzare lo stesso nome dell'indice precedentemente creato
+
+    @Autowired
+    public DocumentController(RestHighLevelClient elasticsearchClient) {
+        this.elasticsearchClient = elasticsearchClient;
+    }
+
+    @PostMapping
+    public String createDocument(@RequestBody Map<String, Object> document) {
+        // Creazione della richiesta per l'inserimento del documento nell'indice
+        IndexRequest indexRequest = new IndexRequest(indexName)
+                .source(document, XContentType.JSON);
+
+        try {
+            // Esecuzione della richiesta e ottenimento della risposta
+            IndexResponse indexResponse = elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT);
+
+            // Verifica se l'inserimento del documento è andato a buon fine
+            if (indexResponse.getResult() == IndexResponse.Result.CREATED) {
+                return "Documento creato con successo!";
+            } else {
+                return "Errore durante la creazione del documento.";
+            }
+
+        } catch (IOException e) {
+            return "Errore durante la comunicazione con Elasticsearch: " + e.getMessage();
+        }
+    }
+
+    @GetMapping("/{documentId}")
+    public Map<String, Object> getDocument(@PathVariable String documentId) {
+        // Creazione della richiesta per ottenere il documento con l'ID specificato
+        GetRequest getRequest = new GetRequest(indexName, documentId);
+
+        try {
+            // Esecuzione della richiesta e ottenimento della risposta
+            GetResponse getResponse = elasticsearchClient.get(getRequest, RequestOptions.DEFAULT);
+
+            // Verifica se il documento è stato trovato
+            if (getResponse.isExists()) {
+                return getResponse.getSourceAsMap();
+            } else {
+                return null; // Documento non trovato
+            }
+
+        } catch (IOException e) {
+            // Gestione dell'errore di comunicazione con Elasticsearch
+            throw new RuntimeException("Errore durante la comunicazione con Elasticsearch: " + e.getMessage());
+        }
+    }
+}
