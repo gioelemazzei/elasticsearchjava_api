@@ -1,0 +1,57 @@
+package restcontroller;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.xcontent.XContentType;
+
+import java.io.IOException;
+import java.util.Map;
+
+@SpringBootApplication
+public class ElasticsearchApiApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ElasticsearchApiApplication.class, args);
+    }
+}
+
+@RestController
+@RequestMapping("/api/documents")
+class DocumentController {
+
+    private final RestHighLevelClient elasticsearchClient;
+
+    public DocumentController(RestHighLevelClient elasticsearchClient) {
+        this.elasticsearchClient = elasticsearchClient;
+    }
+
+    @PostMapping
+    public String createDocument(@RequestBody Map<String, Object> document) {
+        String indexName = "nome_indice";
+
+        IndexRequest indexRequest = new IndexRequest(indexName)
+                .source(document, XContentType.JSON);
+
+        try {
+            IndexResponse indexResponse = elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT);
+
+            if (indexResponse.getResult() == IndexResponse.Result.CREATED) {
+                return "Documento creato con successo!";
+            } else {
+                return "Errore durante la creazione del documento.";
+            }
+
+        } catch (IOException e) {
+            return "Errore durante la comunicazione con Elasticsearch: " + e.getMessage();
+        }
+    }
+}
